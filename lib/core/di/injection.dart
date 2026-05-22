@@ -1,5 +1,6 @@
 import 'package:get_it/get_it.dart';
 import '../../application/blocs/baby/baby_cubit.dart';
+import '../../application/blocs/chat/chat_cubit.dart';
 import '../../application/blocs/ingredients/ingredients_cubit.dart';
 import '../../application/blocs/meals/meals_cubit.dart';
 import '../../domain/repositories/i_ai_repository.dart';
@@ -36,4 +37,5 @@ Future<void> configureDependencies() async {
   getIt.registerFactory(() => BabyCubit(getIt()));
   getIt.registerFactory(() => IngredientsCubit(getIt()));
   getIt.registerFactory(() => MealsCubit(getIt(), getIt(), getIt()));
+  getIt.registerFactory(() => ChatCubit(getIt()));
 }

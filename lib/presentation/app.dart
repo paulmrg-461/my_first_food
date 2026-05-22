@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../application/blocs/baby/baby_cubit.dart';
+import '../application/blocs/chat/chat_cubit.dart';
 import '../application/blocs/ingredients/ingredients_cubit.dart';
 import '../application/blocs/meals/meals_cubit.dart';
 import '../application/blocs/theme/theme_cubit.dart';
@@ -19,6 +20,7 @@ class App extends StatelessWidget {
         BlocProvider(create: (_) => getIt<BabyCubit>()),
         BlocProvider(create: (_) => getIt<IngredientsCubit>()),
         BlocProvider(create: (_) => getIt<MealsCubit>()),
+        BlocProvider(create: (_) => getIt<ChatCubit>()),
       ],
       child: BlocBuilder<ThemeCubit, ThemeMode>(
         builder: (context, themeMode) => MaterialApp(

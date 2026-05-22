@@ -159,17 +159,7 @@ class GeminiService {
         return text;
       } on GenerativeAIException catch (e) {
         dev.log('[Gemini] Error: ${e.message}');
-        final msg = e.message.toLowerCase();
-        final isQuotaError = msg.contains('429') ||
-            msg.contains('quota') ||
-            msg.contains('rate') ||
-            msg.contains('limit') ||
-            msg.contains('depleted') ||
-            msg.contains('credits') ||
-            msg.contains('billing') ||
-            msg.contains('retry') ||
-            msg.contains('prepay');
-        if (isQuotaError) {
+        if (_isQuotaError(e.message.toLowerCase())) {
           _rotate();
           continue;
         }
@@ -181,4 +171,61 @@ class GeminiService {
     }
     throw const QuotaExhaustedException();
   }
+
+  // ─── Chat (free keys only, skip index 0) ─────────────────────────────────
+
+  Future<String> sendChatMessage({
+    required List<({String role, String content})> history,
+    required String userMessage,
+    required List<String> fileUris,
+    required String systemPrompt,
+    int freeKeyStartIndex = 1,
+  }) async {
+    // Hidden exchange: system context + PDFs so Gemini has full knowledge base
+    final systemContent = Content.multi([
+      TextPart(systemPrompt),
+      ...fileUris.map((uri) => FilePart(Uri.parse(uri))),
+    ]);
+    final ackContent = Content(
+      'model',
+      [TextPart('Entendido. Estoy listo para ayudarte con la alimentación de tu bebé.')],
+    );
+
+    final List<Content> contentHistory = [systemContent, ackContent];
+    for (final msg in history) {
+      contentHistory.add(Content(msg.role, [TextPart(msg.content)]));
+    }
+
+    final startIdx = _keys.length > 1 ? freeKeyStartIndex % _keys.length : 0;
+
+    for (var attempt = 0; attempt < _keys.length; attempt++) {
+      final keyIdx = (startIdx + attempt) % _keys.length;
+      try {
+        final model = GenerativeModel(model: AppConfig.geminiModel, apiKey: _keys[keyIdx]);
+        final chat = model.startChat(history: contentHistory);
+        dev.log('[Gemini] Chat key $keyIdx, ${history.length} mensajes previos');
+        final response = await chat.sendMessage(Content.text(userMessage));
+        _keyIndex = keyIdx;
+        return response.text ?? '';
+      } on GenerativeAIException catch (e) {
+        dev.log('[Gemini] Chat key $keyIdx error: ${e.message}');
+        if (_isQuotaError(e.message.toLowerCase())) continue;
+        throw AiException(e.message);
+      } catch (e) {
+        throw AiException('Error inesperado: $e');
+      }
+    }
+    throw const QuotaExhaustedException();
+  }
+
+  bool _isQuotaError(String msg) =>
+      msg.contains('429') ||
+      msg.contains('quota') ||
+      msg.contains('rate') ||
+      msg.contains('limit') ||
+      msg.contains('depleted') ||
+      msg.contains('credits') ||
+      msg.contains('billing') ||
+      msg.contains('retry') ||
+      msg.contains('prepay');
 }
