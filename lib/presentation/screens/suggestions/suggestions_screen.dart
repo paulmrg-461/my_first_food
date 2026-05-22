@@ -22,7 +22,11 @@ class SuggestionsScreen extends StatelessWidget {
         actions: [
           BlocBuilder<ThemeCubit, ThemeMode>(
             builder: (context, mode) => IconButton(
-              icon: Icon(mode == ThemeMode.dark ? Icons.light_mode_outlined : Icons.dark_mode_outlined),
+              icon: Icon(
+                mode == ThemeMode.dark
+                    ? Icons.light_mode_outlined
+                    : Icons.dark_mode_outlined,
+              ),
               onPressed: () => context.read<ThemeCubit>().toggle(),
             ),
           ),
@@ -31,7 +35,8 @@ class SuggestionsScreen extends StatelessWidget {
       body: BlocBuilder<MealsCubit, MealsState>(
         builder: (context, state) {
           if (state is MealsLoading) return const _LoadingState();
-          if (state is MealsLoaded) return _SuggestionsList(suggestions: state.suggestions);
+          if (state is MealsLoaded)
+            return _SuggestionsList(suggestions: state.suggestions);
           if (state is MealsError) {
             return _ErrorState(
               message: state.message,
@@ -59,24 +64,26 @@ class SuggestionsScreen extends StatelessWidget {
           content: const Text('Primero configura el perfil del bebé'),
           backgroundColor: AppColors.primary,
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
         ),
       );
       return;
     }
     context.read<MealsCubit>().suggest(
-          babyAgeMonths: babyState.baby.ageInMonths,
-          availableIngredients: context.read<IngredientsCubit>().ingredientNames,
-        );
+      babyAgeMonths: babyState.baby.ageInMonths,
+      availableIngredients: context.read<IngredientsCubit>().ingredientNames,
+    );
   }
 
   void _retryWithFreshUpload(BuildContext context) {
     final babyState = context.read<BabyCubit>().state;
     if (babyState is! BabyLoaded) return;
     context.read<MealsCubit>().retryWithFreshUpload(
-          babyAgeMonths: babyState.baby.ageInMonths,
-          availableIngredients: context.read<IngredientsCubit>().ingredientNames,
-        );
+      babyAgeMonths: babyState.baby.ageInMonths,
+      availableIngredients: context.read<IngredientsCubit>().ingredientNames,
+    );
   }
 }
 
@@ -99,7 +106,10 @@ class _LoadingState extends StatelessWidget {
                 shape: BoxShape.circle,
               ),
               child: const Center(
-                child: CircularProgressIndicator(color: Colors.white, strokeWidth: 3),
+                child: CircularProgressIndicator(
+                  color: Colors.white,
+                  strokeWidth: 3,
+                ),
               ),
             ),
             const SizedBox(height: AppSpacing.lg),
@@ -205,7 +215,7 @@ class _IdleState extends StatelessWidget {
               _TipCard(
                 icon: Icons.eco_rounded,
                 color: AppColors.primary,
-                title: 'Con lo\nque tienes',
+                title: 'Con lo que tienes',
                 subtitle: 'en casa',
               ),
             ],
@@ -291,7 +301,11 @@ class _ErrorState extends StatelessWidget {
                 color: Colors.red.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.error_outline_rounded, size: 48, color: Colors.red),
+              child: const Icon(
+                Icons.error_outline_rounded,
+                size: 48,
+                color: Colors.red,
+              ),
             ),
             const SizedBox(height: AppSpacing.md),
             const Text(
@@ -312,7 +326,9 @@ class _ErrorState extends StatelessWidget {
               style: OutlinedButton.styleFrom(
                 foregroundColor: AppColors.primary,
                 side: const BorderSide(color: AppColors.primary),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
               ),
             ),
           ],
@@ -381,7 +397,11 @@ class _MealCard extends StatelessWidget {
                         color: Colors.white.withValues(alpha: 0.25),
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: const Icon(Icons.restaurant_rounded, color: Colors.white, size: 18),
+                      child: const Icon(
+                        Icons.restaurant_rounded,
+                        color: Colors.white,
+                        size: 18,
+                      ),
                     ),
                     const SizedBox(width: AppSpacing.sm),
                     Expanded(
@@ -396,14 +416,21 @@ class _MealCard extends StatelessWidget {
                     ),
                     if (meal.minAgeMonths > 0)
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 2,
+                        ),
                         decoration: BoxDecoration(
                           color: Colors.white.withValues(alpha: 0.25),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
                           '+${meal.minAgeMonths}m',
-                          style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ),
                   ],
@@ -442,23 +469,30 @@ class _MealCard extends StatelessWidget {
                       spacing: AppSpacing.xs,
                       runSpacing: AppSpacing.xs,
                       children: meal.nutritionHighlights
-                          .map((h) => Chip(
-                                label: Text(h),
-                                avatar: const Icon(
-                                  Icons.favorite_rounded,
-                                  size: 14,
-                                  color: AppColors.primary,
-                                ),
-                                backgroundColor: AppColors.primary.withValues(alpha: 0.08),
-                                labelStyle: const TextStyle(fontSize: 11),
-                              ))
+                          .map(
+                            (h) => Chip(
+                              label: Text(h),
+                              avatar: const Icon(
+                                Icons.favorite_rounded,
+                                size: 14,
+                                color: AppColors.primary,
+                              ),
+                              backgroundColor: AppColors.primary.withValues(
+                                alpha: 0.08,
+                              ),
+                              labelStyle: const TextStyle(fontSize: 11),
+                            ),
+                          )
                           .toList(),
                     ),
                     const SizedBox(height: AppSpacing.md),
                   ],
                   const _SectionLabel('Preparación'),
                   const SizedBox(height: AppSpacing.xs),
-                  Text(meal.instructions, style: const TextStyle(fontSize: 13, height: 1.5)),
+                  Text(
+                    meal.instructions,
+                    style: const TextStyle(fontSize: 13, height: 1.5),
+                  ),
                   if (meal.missingIngredients.isNotEmpty) ...[
                     const SizedBox(height: AppSpacing.md),
                     Container(
@@ -482,7 +516,10 @@ class _MealCard extends StatelessWidget {
                           ...meal.missingIngredients.map(
                             (m) => Text(
                               '• $m',
-                              style: const TextStyle(fontSize: 12, color: AppColors.muted),
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: AppColors.muted,
+                              ),
                             ),
                           ),
                         ],
@@ -493,12 +530,19 @@ class _MealCard extends StatelessWidget {
                     const SizedBox(height: AppSpacing.sm),
                     Row(
                       children: [
-                        const Icon(Icons.menu_book_outlined, size: 12, color: AppColors.muted),
+                        const Icon(
+                          Icons.menu_book_outlined,
+                          size: 12,
+                          color: AppColors.muted,
+                        ),
                         const SizedBox(width: 4),
                         Expanded(
                           child: Text(
                             meal.sourceDocument,
-                            style: const TextStyle(color: AppColors.muted, fontSize: 11),
+                            style: const TextStyle(
+                              color: AppColors.muted,
+                              fontSize: 11,
+                            ),
                           ),
                         ),
                       ],

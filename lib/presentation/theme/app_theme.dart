@@ -141,7 +141,10 @@ class AppTheme {
           elevation: 0,
           scrolledUnderElevation: 0,
           centerTitle: true,
+          backgroundColor: Colors.transparent,
+          foregroundColor: Colors.white,
           titleTextStyle: TextStyle(
+            color: Colors.white,
             fontSize: 18,
             fontWeight: FontWeight.w600,
           ),

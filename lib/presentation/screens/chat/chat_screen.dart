@@ -163,6 +163,13 @@ class _WelcomeState extends StatelessWidget {
       'Dame una receta con aguacate',
     ];
 
+    final brightness = Theme.of(context).brightness;
+    final isDark = brightness == Brightness.dark;
+    final chipBgAlpha = isDark ? 0.08 : 0.15;
+    final chipBorderAlpha = isDark ? 0.2 : 0.4;
+    final chipForeground =
+        isDark ? AppColors.primaryLight : AppColors.primary;
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(AppSpacing.md),
       child: Column(
@@ -223,11 +230,17 @@ class _WelcomeState extends StatelessWidget {
             runSpacing: AppSpacing.sm,
             children: suggestions
                 .map((s) => ActionChip(
-                      avatar: const Icon(Icons.chat_bubble_outline_rounded, size: 14),
-                      label: Text(s, style: const TextStyle(fontSize: 12)),
+                      avatar: Icon(Icons.chat_bubble_outline_rounded,
+                          size: 14, color: chipForeground),
+                      label: Text(s,
+                          style: TextStyle(
+                              fontSize: 12, color: chipForeground)),
                       onPressed: () => onSuggestion(s),
-                      backgroundColor: AppColors.primary.withValues(alpha: 0.08),
-                      side: BorderSide(color: AppColors.primary.withValues(alpha: 0.2)),
+                      backgroundColor:
+                          AppColors.primary.withValues(alpha: chipBgAlpha),
+                      side: BorderSide(
+                          color: AppColors.primary
+                              .withValues(alpha: chipBorderAlpha)),
                     ))
                 .toList(),
           ),

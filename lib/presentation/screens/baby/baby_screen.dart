@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../application/blocs/auth/auth_cubit.dart';
 import '../../../application/blocs/baby/baby_cubit.dart';
 import '../../../application/blocs/baby/baby_state.dart';
 import '../../../application/blocs/theme/theme_cubit.dart';
@@ -34,7 +35,13 @@ class _BabyScreenState extends State<BabyScreen> {
             builder: (context, mode) => IconButton(
               icon: Icon(mode == ThemeMode.dark ? Icons.light_mode_outlined : Icons.dark_mode_outlined),
               onPressed: () => context.read<ThemeCubit>().toggle(),
+              tooltip: 'Cambiar tema',
             ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.logout_rounded),
+            onPressed: () => _confirmLogout(context),
+            tooltip: 'Cerrar sesión',
           ),
         ],
       ),
@@ -217,6 +224,30 @@ class _BabyScreenState extends State<BabyScreen> {
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
       );
+    }
+  }
+
+  Future<void> _confirmLogout(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Cerrar sesión'),
+        content: const Text('¿Estás segura de que quieres cerrar sesión?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: TextButton.styleFrom(foregroundColor: AppColors.error),
+            child: const Text('Salir'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true && context.mounted) {
+      context.read<AuthCubit>().signOut();
     }
   }
 
