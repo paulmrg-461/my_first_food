@@ -1,17 +1,24 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'auth_state.dart';
 
 class AuthCubit extends Cubit<AuthState> {
   final FirebaseAuth _auth;
+  final FlutterSecureStorage _secureStorage;
+  static const _keyEmail = 'auth_email';
 
-  AuthCubit({required FirebaseAuth firebaseAuth})
-    : _auth = firebaseAuth,
-      super(const AuthInitial()) {
+  AuthCubit({
+    required FirebaseAuth firebaseAuth,
+    required this._secureStorage,
+  })  : _auth = firebaseAuth,
+        super(const AuthInitial()) {
     _auth.authStateChanges().listen((user) {
       if (user != null) {
+        _secureStorage.write(key: _keyEmail, value: user.email);
         emit(AuthAuthenticated(user));
       } else {
+        _secureStorage.delete(key: _keyEmail);
         emit(const AuthUnauthenticated());
       }
     });
@@ -35,6 +42,7 @@ class AuthCubit extends Cubit<AuthState> {
   }
 
   Future<void> signOut() async {
+    await _secureStorage.delete(key: _keyEmail);
     await _auth.signOut();
   }
 

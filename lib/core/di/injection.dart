@@ -1,4 +1,5 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:get_it/get_it.dart';
 import '../../application/blocs/auth/auth_cubit.dart';
 import '../../application/blocs/baby/baby_cubit.dart';
@@ -20,6 +21,7 @@ final getIt = GetIt.instance;
 Future<void> configureDependencies() async {
   // Datasources
   getIt.registerLazySingleton<FirebaseAuth>(() => FirebaseAuth.instance);
+  getIt.registerLazySingleton<FlutterSecureStorage>(FlutterSecureStorage.new);
   getIt.registerLazySingleton<GeminiService>(GeminiService.new);
   getIt.registerLazySingleton<HiveLocalDatasource>(HiveLocalDatasource.new);
 
@@ -37,7 +39,7 @@ Future<void> configureDependencies() async {
   getIt.registerFactory(() => GetHealthInsightUseCase(getIt()));
 
   // Cubits (factory = new instance per creation)
-  getIt.registerFactory(() => AuthCubit(firebaseAuth: getIt()));
+  getIt.registerFactory(() => AuthCubit(firebaseAuth: getIt(), secureStorage: getIt()));
   getIt.registerFactory(() => BabyCubit(getIt()));
   getIt.registerFactory(() => IngredientsCubit(getIt()));
   getIt.registerFactory(() => MealsCubit(getIt(), getIt(), getIt()));
