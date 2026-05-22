@@ -4,10 +4,12 @@ class AppConfig {
   AppConfig._();
 
   static List<String> get geminiApiKeys => [
-        dotenv.get('GEMINI_API_KEY_1', fallback: ''),
-        dotenv.get('GEMINI_API_KEY_2', fallback: ''),
-        dotenv.get('GEMINI_API_KEY_3', fallback: ''),
-      ].where((k) => k.isNotEmpty).toList();
+    dotenv.get('GEMINI_API_KEY_1', fallback: ''),
+    dotenv.get('GEMINI_API_KEY_2', fallback: ''),
+    dotenv.get('GEMINI_API_KEY_3', fallback: ''),
+    dotenv.get('GEMINI_API_KEY_4', fallback: ''),
+    dotenv.get('GEMINI_API_KEY_5', fallback: ''),
+  ].where((k) => k.isNotEmpty).toList();
 
   static String get deepseekApiKey =>
       dotenv.get('DEEPSEEK_API_KEY', fallback: '');
