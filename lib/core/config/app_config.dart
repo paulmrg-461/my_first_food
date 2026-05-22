@@ -15,6 +15,6 @@ class AppConfig {
   static bool get isDevelopment =>
       dotenv.get('APP_ENV', fallback: 'development') == 'development';
 
-  static const geminiModel = 'gemini-2.0-flash';
+  static const geminiModel = 'gemini-2.5-flash';
   static const geminiFileExpiryHours = 47;
 }

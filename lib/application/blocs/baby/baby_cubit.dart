@@ -17,11 +17,17 @@ class BabyCubit extends Cubit<BabyState> {
     );
   }
 
-  Future<void> save(Baby baby) async {
+  Future<bool> save(Baby baby) async {
     final result = await _repo.saveBaby(baby);
-    result.fold(
-      (f) => emit(BabyError(f.message)),
-      (_) => emit(BabyLoaded(baby)),
+    return result.fold(
+      (f) {
+        emit(BabyError(f.message));
+        return false;
+      },
+      (_) {
+        emit(BabyLoaded(baby));
+        return true;
+      },
     );
   }
 }

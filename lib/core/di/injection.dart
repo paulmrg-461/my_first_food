@@ -35,5 +35,5 @@ Future<void> configureDependencies() async {
   // Cubits (factory = new instance per creation)
   getIt.registerFactory(() => BabyCubit(getIt()));
   getIt.registerFactory(() => IngredientsCubit(getIt()));
-  getIt.registerFactory(() => MealsCubit(getIt(), getIt()));
+  getIt.registerFactory(() => MealsCubit(getIt(), getIt(), getIt()));
 }

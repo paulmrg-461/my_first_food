@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../application/blocs/ingredients/ingredients_cubit.dart';
 import '../../../application/blocs/ingredients/ingredients_state.dart';
+import '../../../application/blocs/theme/theme_cubit.dart';
 import '../../../domain/entities/ingredient.dart';
 import '../../theme/app_theme.dart';
 
@@ -11,7 +12,17 @@ class IngredientsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Mis Ingredientes')),
+      appBar: AppBar(
+        title: const Text('Mis Ingredientes'),
+        actions: [
+          BlocBuilder<ThemeCubit, ThemeMode>(
+            builder: (context, mode) => IconButton(
+              icon: Icon(mode == ThemeMode.dark ? Icons.light_mode : Icons.dark_mode),
+              onPressed: () => context.read<ThemeCubit>().toggle(),
+            ),
+          ),
+        ],
+      ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _showAddDialog(context),
         child: const Icon(Icons.add),

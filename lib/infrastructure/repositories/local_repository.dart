@@ -102,4 +102,7 @@ class LocalRepository implements ILocalRepository {
 
   @override
   Future<bool> areFileUrisValid() => _local.areFileUrisValid();
+
+  @override
+  Future<void> clearFileUris() => _local.clearFileUris();
 }

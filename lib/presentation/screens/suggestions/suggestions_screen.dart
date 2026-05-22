@@ -5,6 +5,7 @@ import '../../../application/blocs/baby/baby_state.dart';
 import '../../../application/blocs/ingredients/ingredients_cubit.dart';
 import '../../../application/blocs/meals/meals_cubit.dart';
 import '../../../application/blocs/meals/meals_state.dart';
+import '../../../application/blocs/theme/theme_cubit.dart';
 import '../../../domain/entities/meal_suggestion.dart';
 import '../../theme/app_theme.dart';
 
@@ -14,7 +15,17 @@ class SuggestionsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('¿Qué le preparo?')),
+      appBar: AppBar(
+        title: const Text('¿Qué le preparo?'),
+        actions: [
+          BlocBuilder<ThemeCubit, ThemeMode>(
+            builder: (context, mode) => IconButton(
+              icon: Icon(mode == ThemeMode.dark ? Icons.light_mode : Icons.dark_mode),
+              onPressed: () => context.read<ThemeCubit>().toggle(),
+            ),
+          ),
+        ],
+      ),
       body: BlocBuilder<MealsCubit, MealsState>(
         builder: (context, state) {
           if (state is MealsLoading) {
@@ -24,7 +35,10 @@ class SuggestionsScreen extends StatelessWidget {
             return _SuggestionsList(suggestions: state.suggestions);
           }
           if (state is MealsError) {
-            return _ErrorState(message: state.message);
+            return _ErrorState(
+              message: state.message,
+              onRetry: () => _retryWithFreshUpload(context),
+            );
           }
           return _IdleState(
             onTap: () => _suggest(context),
@@ -47,9 +61,18 @@ class SuggestionsScreen extends StatelessWidget {
       );
       return;
     }
-
     final ingredients = context.read<IngredientsCubit>().ingredientNames;
     context.read<MealsCubit>().suggest(
+          babyAgeMonths: babyState.baby.ageInMonths,
+          availableIngredients: ingredients,
+        );
+  }
+
+  void _retryWithFreshUpload(BuildContext context) {
+    final babyState = context.read<BabyCubit>().state;
+    if (babyState is! BabyLoaded) return;
+    final ingredients = context.read<IngredientsCubit>().ingredientNames;
+    context.read<MealsCubit>().retryWithFreshUpload(
           babyAgeMonths: babyState.baby.ageInMonths,
           availableIngredients: ingredients,
         );
@@ -108,7 +131,8 @@ class _IdleState extends StatelessWidget {
 
 class _ErrorState extends StatelessWidget {
   final String message;
-  const _ErrorState({required this.message});
+  final VoidCallback onRetry;
+  const _ErrorState({required this.message, required this.onRetry});
 
   @override
   Widget build(BuildContext context) {
@@ -120,7 +144,17 @@ class _ErrorState extends StatelessWidget {
           children: [
             const Icon(Icons.error_outline, size: 64, color: Colors.red),
             const SizedBox(height: AppSpacing.md),
-            Text(message, textAlign: TextAlign.center, style: const TextStyle(color: Colors.red)),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.red),
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            OutlinedButton.icon(
+              onPressed: onRetry,
+              icon: const Icon(Icons.refresh),
+              label: const Text('Limpiar caché y reintentar'),
+            ),
           ],
         ),
       ),

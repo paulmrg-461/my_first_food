@@ -93,6 +93,12 @@ class HiveLocalDatasource {
     await box.put(_keyFileUrisExpiry, expiresAt.toIso8601String());
   }
 
+  Future<void> clearFileUris() async {
+    final box = await _openBox;
+    await box.delete(_keyFileUris);
+    await box.delete(_keyFileUrisExpiry);
+  }
+
   Future<bool> areFileUrisValid() async {
     final box = await _openBox;
     final uris = box.get(_keyFileUris) as String?;

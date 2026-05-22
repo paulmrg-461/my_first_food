@@ -22,4 +22,5 @@ abstract class ILocalRepository {
     required DateTime expiresAt,
   });
   Future<bool> areFileUrisValid();
+  Future<void> clearFileUris();
 }
