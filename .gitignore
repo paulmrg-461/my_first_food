@@ -43,3 +43,13 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+.env
+.agents/
+.claude/
+.aider.instructions.md
+.opencode.json
+.aiderignore
+.claudeignore
+CLAUDE.md
+skills-lock.json
+/public/
