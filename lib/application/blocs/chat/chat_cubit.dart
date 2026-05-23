@@ -1,16 +1,27 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../domain/entities/chat_message.dart';
 import '../../../domain/repositories/i_ai_repository.dart';
+import '../../../domain/repositories/i_local_repository.dart';
 import 'chat_state.dart';
 
 class ChatCubit extends Cubit<ChatState> {
   final IAiRepository _repo;
+  final ILocalRepository _local;
   final List<ChatMessage> _messages = [];
 
-  // Keep last 20 messages (10 exchanges) to control token usage
+  // Sent to AI: last 20. Persisted: last 100 (capped in datasource).
   static const _maxHistory = 20;
 
-  ChatCubit(this._repo) : super(ChatInitial());
+  ChatCubit(this._repo, this._local) : super(ChatInitial());
+
+  Future<void> init() async {
+    final history = await _local.getChatHistory();
+    if (history.isEmpty) return;
+    _messages
+      ..clear()
+      ..addAll(history);
+    emit(ChatUpdated(List.from(_messages)));
+  }
 
   Future<void> sendMessage(
     String text, {
@@ -43,13 +54,15 @@ class ChatCubit extends Cubit<ChatState> {
         _messages.add(
           ChatMessage(role: 'model', content: response, timestamp: DateTime.now()),
         );
+        _local.saveChatHistory(List.from(_messages));
         emit(ChatUpdated(List.from(_messages)));
       },
     );
   }
 
-  void clearChat() {
+  Future<void> clearChat() async {
     _messages.clear();
+    await _local.clearChatHistory();
     emit(ChatInitial());
   }
 }

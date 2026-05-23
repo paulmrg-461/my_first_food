@@ -1,21 +1,26 @@
-import 'package:flutter_dotenv/flutter_dotenv.dart';
-
 class AppConfig {
   AppConfig._();
 
+  // Injected at build time via --dart-define (see deploy section).
+  static const _geminiKey1 = String.fromEnvironment('GEMINI_API_KEY_1');
+  static const _geminiKey2 = String.fromEnvironment('GEMINI_API_KEY_2');
+  static const _geminiKey3 = String.fromEnvironment('GEMINI_API_KEY_3');
+  static const _geminiKey4 = String.fromEnvironment('GEMINI_API_KEY_4');
+  static const _geminiKey5 = String.fromEnvironment('GEMINI_API_KEY_5');
+  static const _appEnv =
+      String.fromEnvironment('APP_ENV', defaultValue: 'development');
+
   static List<String> get geminiApiKeys => [
-    dotenv.get('GEMINI_API_KEY_1', fallback: ''),
-    dotenv.get('GEMINI_API_KEY_2', fallback: ''),
-    dotenv.get('GEMINI_API_KEY_3', fallback: ''),
-    dotenv.get('GEMINI_API_KEY_4', fallback: ''),
-    dotenv.get('GEMINI_API_KEY_5', fallback: ''),
+    _geminiKey1,
+    _geminiKey2,
+    _geminiKey3,
+    _geminiKey4,
+    _geminiKey5,
   ].where((k) => k.isNotEmpty).toList();
 
-  static String get deepseekApiKey =>
-      dotenv.get('DEEPSEEK_API_KEY', fallback: '');
+  static const deepseekApiKey = String.fromEnvironment('DEEPSEEK_API_KEY');
 
-  static bool get isDevelopment =>
-      dotenv.get('APP_ENV', fallback: 'development') == 'development';
+  static bool get isDevelopment => _appEnv == 'development';
 
   static const geminiModel = 'gemini-2.5-flash';
   static const geminiFileExpiryHours = 47;

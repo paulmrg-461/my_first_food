@@ -86,18 +86,18 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Widget _welcomeText(BuildContext context) {
-    return const Column(
+    return Column(
       children: [
         Text(
           'Mi Primera Comida',
           style: TextStyle(
             fontSize: 26,
             fontWeight: FontWeight.w700,
-            color: AppColors.onBackground,
+            color: Theme.of(context).colorScheme.onSurface,
           ),
         ),
-        SizedBox(height: AppSpacing.xs),
-        Text(
+        const SizedBox(height: AppSpacing.xs),
+        const Text(
           'Inicia sesión para continuar',
           style: TextStyle(
             fontSize: 15,

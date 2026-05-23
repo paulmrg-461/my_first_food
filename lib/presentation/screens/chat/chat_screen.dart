@@ -21,6 +21,12 @@ class _ChatScreenState extends State<ChatScreen> {
   final _scrollController = ScrollController();
 
   @override
+  void initState() {
+    super.initState();
+    context.read<ChatCubit>().init();
+  }
+
+  @override
   void dispose() {
     _controller.dispose();
     _scrollController.dispose();

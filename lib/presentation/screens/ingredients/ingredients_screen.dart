@@ -130,12 +130,20 @@ class _IngredientChip extends StatelessWidget {
         hasQty
             ? '${ingredient.name} · ${ingredient.quantity.toStringAsFixed(ingredient.quantity % 1 == 0 ? 0 : 1)} ${ingredient.unit}'
             : ingredient.name,
-        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+        style: TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w500,
+          color: Theme.of(context).colorScheme.onSurface,
+        ),
       ),
-      deleteIcon: const Icon(Icons.close_rounded, size: 16, color: AppColors.muted),
+      deleteIcon: Icon(
+        Icons.close_rounded,
+        size: 16,
+        color: Theme.of(context).colorScheme.onSurfaceVariant,
+      ),
       onDeleted: () => context.read<IngredientsCubit>().remove(ingredient.id),
-      backgroundColor: AppColors.accent.withValues(alpha: 0.1),
-      side: BorderSide(color: AppColors.accent.withValues(alpha: 0.25)),
+      backgroundColor: AppColors.accent.withValues(alpha: 0.15),
+      side: BorderSide(color: AppColors.accent.withValues(alpha: 0.35)),
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: 4),
     );
   }

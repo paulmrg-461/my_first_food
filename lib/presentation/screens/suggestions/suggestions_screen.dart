@@ -375,6 +375,10 @@ class _MealCard extends StatelessWidget {
         child: ExpansionTile(
           tilePadding: EdgeInsets.zero,
           childrenPadding: EdgeInsets.zero,
+          backgroundColor: Colors.transparent,
+          collapsedBackgroundColor: Colors.transparent,
+          shape: const Border(),
+          collapsedShape: const Border(),
           leading: null,
           title: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -446,7 +450,10 @@ class _MealCard extends StatelessWidget {
                   meal.description,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 13, color: AppColors.muted),
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
                 ),
               ),
             ],
@@ -477,10 +484,10 @@ class _MealCard extends StatelessWidget {
                                 size: 14,
                                 color: AppColors.primary,
                               ),
-                              backgroundColor: AppColors.primary.withValues(
-                                alpha: 0.08,
+                              labelStyle: TextStyle(
+                                fontSize: 11,
+                                color: Theme.of(context).colorScheme.onSurface,
                               ),
-                              labelStyle: const TextStyle(fontSize: 11),
                             ),
                           )
                           .toList(),
@@ -491,7 +498,11 @@ class _MealCard extends StatelessWidget {
                   const SizedBox(height: AppSpacing.xs),
                   Text(
                     meal.instructions,
-                    style: const TextStyle(fontSize: 13, height: 1.5),
+                    style: TextStyle(
+                      fontSize: 13,
+                      height: 1.5,
+                      color: Theme.of(context).colorScheme.onSurface,
+                    ),
                   ),
                   if (meal.missingIngredients.isNotEmpty) ...[
                     const SizedBox(height: AppSpacing.md),
@@ -516,9 +527,9 @@ class _MealCard extends StatelessWidget {
                           ...meal.missingIngredients.map(
                             (m) => Text(
                               '• $m',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 12,
-                                color: AppColors.muted,
+                                color: Theme.of(context).colorScheme.onSurfaceVariant,
                               ),
                             ),
                           ),
@@ -528,24 +539,27 @@ class _MealCard extends StatelessWidget {
                   ],
                   if (meal.sourceDocument.isNotEmpty) ...[
                     const SizedBox(height: AppSpacing.sm),
-                    Row(
-                      children: [
-                        const Icon(
-                          Icons.menu_book_outlined,
-                          size: 12,
-                          color: AppColors.muted,
-                        ),
-                        const SizedBox(width: 4),
-                        Expanded(
-                          child: Text(
-                            meal.sourceDocument,
-                            style: const TextStyle(
-                              color: AppColors.muted,
-                              fontSize: 11,
+                    Builder(
+                      builder: (context) {
+                        final muted =
+                            Theme.of(context).colorScheme.onSurfaceVariant;
+                        return Row(
+                          children: [
+                            Icon(
+                              Icons.menu_book_outlined,
+                              size: 12,
+                              color: muted,
                             ),
-                          ),
-                        ),
-                      ],
+                            const SizedBox(width: 4),
+                            Expanded(
+                              child: Text(
+                                meal.sourceDocument,
+                                style: TextStyle(color: muted, fontSize: 11),
+                              ),
+                            ),
+                          ],
+                        );
+                      },
                     ),
                   ],
                 ],
@@ -566,10 +580,10 @@ class _SectionLabel extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       text,
-      style: const TextStyle(
+      style: TextStyle(
         fontWeight: FontWeight.w600,
         fontSize: 13,
-        color: AppColors.onBackground,
+        color: Theme.of(context).colorScheme.onSurface,
       ),
     );
   }
