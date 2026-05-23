@@ -54,3 +54,4 @@ CLAUDE.md
 skills-lock.json
 /public/
 firebase_options.dart
+firebase.json

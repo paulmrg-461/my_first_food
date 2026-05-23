@@ -1,4 +1,5 @@
 import 'package:dartz/dartz.dart';
+import '../entities/chat_message.dart';
 import '../entities/meal_suggestion.dart';
 import '../entities/shopping_item.dart';
 import '../entities/health_insight.dart';
@@ -22,4 +23,11 @@ abstract class IAiRepository {
   });
 
   Future<Either<Failure, void>> ensureFilesUploaded();
+
+  Future<Either<Failure, String>> sendChatMessage({
+    required List<ChatMessage> history,
+    required String userMessage,
+    required int babyAgeMonths,
+    required List<String> availableIngredients,
+  });
 }

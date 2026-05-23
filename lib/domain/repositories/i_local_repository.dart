@@ -1,5 +1,6 @@
 import 'package:dartz/dartz.dart';
 import '../entities/baby.dart';
+import '../entities/chat_message.dart';
 import '../entities/ingredient.dart';
 import '../entities/meal_suggestion.dart';
 import '../../core/error/failures.dart';
@@ -22,4 +23,9 @@ abstract class ILocalRepository {
     required DateTime expiresAt,
   });
   Future<bool> areFileUrisValid();
+  Future<void> clearFileUris();
+
+  Future<List<ChatMessage>> getChatHistory();
+  Future<void> saveChatHistory(List<ChatMessage> messages);
+  Future<void> clearChatHistory();
 }

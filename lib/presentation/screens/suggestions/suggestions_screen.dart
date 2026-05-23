@@ -5,8 +5,10 @@ import '../../../application/blocs/baby/baby_state.dart';
 import '../../../application/blocs/ingredients/ingredients_cubit.dart';
 import '../../../application/blocs/meals/meals_cubit.dart';
 import '../../../application/blocs/meals/meals_state.dart';
+import '../../../application/blocs/theme/theme_cubit.dart';
 import '../../../domain/entities/meal_suggestion.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/app_logo.dart';
 
 class SuggestionsScreen extends StatelessWidget {
   const SuggestionsScreen({super.key});
@@ -14,27 +16,42 @@ class SuggestionsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('¿Qué le preparo?')),
+      appBar: AppBar(
+        leading: const AppLogo(),
+        title: const Text('Mi Primera Comida'),
+        actions: [
+          BlocBuilder<ThemeCubit, ThemeMode>(
+            builder: (context, mode) => IconButton(
+              icon: Icon(
+                mode == ThemeMode.dark
+                    ? Icons.light_mode_outlined
+                    : Icons.dark_mode_outlined,
+              ),
+              onPressed: () => context.read<ThemeCubit>().toggle(),
+            ),
+          ),
+        ],
+      ),
       body: BlocBuilder<MealsCubit, MealsState>(
         builder: (context, state) {
-          if (state is MealsLoading) {
-            return const _LoadingState();
-          }
-          if (state is MealsLoaded) {
+          if (state is MealsLoading) return const _LoadingState();
+          if (state is MealsLoaded)
             return _SuggestionsList(suggestions: state.suggestions);
-          }
           if (state is MealsError) {
-            return _ErrorState(message: state.message);
+            return _ErrorState(
+              message: state.message,
+              onRetry: () => _retryWithFreshUpload(context),
+            );
           }
-          return _IdleState(
-            onTap: () => _suggest(context),
-          );
+          return _IdleState(onTap: () => _suggest(context));
         },
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _suggest(context),
         icon: const Icon(Icons.auto_awesome),
         label: const Text('Sugerir recetas'),
+        backgroundColor: AppColors.primary,
+        foregroundColor: Colors.white,
       ),
     );
   }
@@ -43,16 +60,30 @@ class SuggestionsScreen extends StatelessWidget {
     final babyState = context.read<BabyCubit>().state;
     if (babyState is! BabyLoaded) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Primero configura el perfil del bebé')),
+        SnackBar(
+          content: const Text('Primero configura el perfil del bebé'),
+          backgroundColor: AppColors.primary,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
       );
       return;
     }
-
-    final ingredients = context.read<IngredientsCubit>().ingredientNames;
     context.read<MealsCubit>().suggest(
-          babyAgeMonths: babyState.baby.ageInMonths,
-          availableIngredients: ingredients,
-        );
+      babyAgeMonths: babyState.baby.ageInMonths,
+      availableIngredients: context.read<IngredientsCubit>().ingredientNames,
+    );
+  }
+
+  void _retryWithFreshUpload(BuildContext context) {
+    final babyState = context.read<BabyCubit>().state;
+    if (babyState is! BabyLoaded) return;
+    context.read<MealsCubit>().retryWithFreshUpload(
+      babyAgeMonths: babyState.baby.ageInMonths,
+      availableIngredients: context.read<IngredientsCubit>().ingredientNames,
+    );
   }
 }
 
@@ -61,20 +92,40 @@ class _LoadingState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          CircularProgressIndicator(),
-          SizedBox(height: AppSpacing.md),
-          Text('Consultando los libros de recetas...', textAlign: TextAlign.center),
-          SizedBox(height: AppSpacing.sm),
-          Text(
-            '(Primera vez puede tomar 1-2 min\npara subir los PDFs a Gemini)',
-            textAlign: TextAlign.center,
-            style: TextStyle(color: AppColors.muted, fontSize: 12),
-          ),
-        ],
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.xl),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 80,
+              height: 80,
+              decoration: BoxDecoration(
+                gradient: AppColors.primaryGradient,
+                shape: BoxShape.circle,
+              ),
+              child: const Center(
+                child: CircularProgressIndicator(
+                  color: Colors.white,
+                  strokeWidth: 3,
+                ),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            const Text(
+              'Consultando los libros de recetas...',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Text(
+              'La primera vez puede tomar 1-2 minutos\nwhile se suben los PDFs a Gemini',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: AppColors.muted, fontSize: 13),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -86,19 +137,97 @@ class _IdleState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
+    final babyState = context.watch<BabyCubit>().state;
+    final babyName = babyState is BabyLoaded ? babyState.baby.name : null;
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(AppSpacing.md),
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(Icons.restaurant_menu, size: 80, color: AppColors.primary),
-          const SizedBox(height: AppSpacing.md),
-          const Text('Toca el botón para obtener', style: TextStyle(color: AppColors.muted)),
-          const Text('ideas de recetas para tu bebé', style: TextStyle(color: AppColors.muted)),
+          // Hero gradient card
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(AppSpacing.xl),
+            decoration: BoxDecoration(
+              gradient: AppColors.primaryGradient,
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.primary.withValues(alpha: 0.3),
+                  blurRadius: 20,
+                  offset: const Offset(0, 8),
+                ),
+              ],
+            ),
+            child: Column(
+              children: [
+                Image.asset(
+                  'assets/images/logo_no_bg.png',
+                  height: 80,
+                  color: Colors.white,
+                  colorBlendMode: BlendMode.srcIn,
+                  errorBuilder: (context, e, _) => const Icon(
+                    Icons.restaurant,
+                    size: 80,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.md),
+                Text(
+                  babyName != null
+                      ? '¿Qué le preparamos\nhoy a $babyName? 🍼'
+                      : '¿Qué cocinamos\nhoy? 🍼',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    height: 1.3,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                const Text(
+                  'Recetas personalizadas basadas en\nlos ingredientes que tienes',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.white70, fontSize: 14),
+                ),
+              ],
+            ),
+          ),
           const SizedBox(height: AppSpacing.xl),
-          FilledButton.icon(
-            onPressed: onTap,
-            icon: const Icon(Icons.auto_awesome),
-            label: const Text('Sugerir recetas'),
+          // Tips row
+          Row(
+            children: [
+              _TipCard(
+                icon: Icons.menu_book_rounded,
+                color: AppColors.secondary,
+                title: '5 libros',
+                subtitle: 'de recetas',
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              _TipCard(
+                icon: Icons.verified_rounded,
+                color: AppColors.accent,
+                title: 'Seguro',
+                subtitle: 'para tu bebé',
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              _TipCard(
+                icon: Icons.eco_rounded,
+                color: AppColors.primary,
+                title: 'Con lo que tienes',
+                subtitle: 'en casa',
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.xl),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: onTap,
+              icon: const Icon(Icons.auto_awesome),
+              label: const Text('Sugerir recetas ahora'),
+            ),
           ),
         ],
       ),
@@ -106,21 +235,102 @@ class _IdleState extends StatelessWidget {
   }
 }
 
+class _TipCard extends StatelessWidget {
+  final IconData icon;
+  final Color color;
+  final String title;
+  final String subtitle;
+  const _TipCard({
+    required this.icon,
+    required this.color,
+    required this.title,
+    required this.subtitle,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Column(
+          children: [
+            Icon(icon, color: color, size: 28),
+            const SizedBox(height: AppSpacing.xs),
+            Text(
+              title,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: color,
+                fontWeight: FontWeight.bold,
+                fontSize: 13,
+                height: 1.2,
+              ),
+            ),
+            Text(
+              subtitle,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: AppColors.muted, fontSize: 11),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _ErrorState extends StatelessWidget {
   final String message;
-  const _ErrorState({required this.message});
+  final VoidCallback onRetry;
+  const _ErrorState({required this.message, required this.onRetry});
 
   @override
   Widget build(BuildContext context) {
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.lg),
+        padding: const EdgeInsets.all(AppSpacing.xl),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.error_outline, size: 64, color: Colors.red),
+            Container(
+              padding: const EdgeInsets.all(AppSpacing.lg),
+              decoration: BoxDecoration(
+                color: Colors.red.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.error_outline_rounded,
+                size: 48,
+                color: Colors.red,
+              ),
+            ),
             const SizedBox(height: AppSpacing.md),
-            Text(message, textAlign: TextAlign.center, style: const TextStyle(color: Colors.red)),
+            const Text(
+              'Algo salió mal',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: AppColors.muted, fontSize: 13),
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            OutlinedButton.icon(
+              onPressed: onRetry,
+              icon: const Icon(Icons.refresh_rounded),
+              label: const Text('Limpiar caché y reintentar'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.primary,
+                side: const BorderSide(color: AppColors.primary),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+            ),
           ],
         ),
       ),
@@ -137,53 +347,243 @@ class _SuggestionsList extends StatelessWidget {
     return ListView.builder(
       padding: const EdgeInsets.all(AppSpacing.md),
       itemCount: suggestions.length,
-      itemBuilder: (context, i) => _MealCard(meal: suggestions[i]),
+      itemBuilder: (context, i) => _MealCard(meal: suggestions[i], index: i),
     );
   }
 }
 
 class _MealCard extends StatelessWidget {
   final MealSuggestion meal;
-  const _MealCard({required this.meal});
+  final int index;
+  const _MealCard({required this.meal, required this.index});
+
+  static const _gradients = [
+    [Color(0xFFE8677A), Color(0xFFFFA552)],
+    [Color(0xFF7DC4B0), Color(0xFF42A5F5)],
+    [Color(0xFFFFA552), Color(0xFFFFD49E)],
+  ];
 
   @override
   Widget build(BuildContext context) {
+    final colors = _gradients[index % _gradients.length];
     return Card(
       margin: const EdgeInsets.only(bottom: AppSpacing.md),
-      child: ExpansionTile(
-        leading: const CircleAvatar(
-          backgroundColor: AppColors.primary,
-          child: Icon(Icons.restaurant, color: Colors.white),
-        ),
-        title: Text(meal.title, style: const TextStyle(fontWeight: FontWeight.bold)),
-        subtitle: Text(meal.description, maxLines: 2, overflow: TextOverflow.ellipsis),
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(AppSpacing.md),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (meal.nutritionHighlights.isNotEmpty) ...[
-                  const Text('Nutrición:', style: TextStyle(fontWeight: FontWeight.w600)),
-                  ...meal.nutritionHighlights.map((h) => Text('• $h')),
-                  const SizedBox(height: AppSpacing.sm),
-                ],
-                const Text('Preparación:', style: TextStyle(fontWeight: FontWeight.w600)),
-                Text(meal.instructions),
-                if (meal.missingIngredients.isNotEmpty) ...[
-                  const SizedBox(height: AppSpacing.sm),
-                  const Text('Te falta:', style: TextStyle(fontWeight: FontWeight.w600, color: Colors.orange)),
-                  ...meal.missingIngredients.map((m) => Text('• $m', style: const TextStyle(color: Colors.orange))),
-                ],
-                if (meal.sourceDocument.isNotEmpty) ...[
-                  const SizedBox(height: AppSpacing.sm),
-                  Text('Fuente: ${meal.sourceDocument}',
-                      style: const TextStyle(color: AppColors.muted, fontSize: 11)),
-                ],
-              ],
-            ),
+      elevation: 2,
+      shadowColor: colors[0].withValues(alpha: 0.2),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: ExpansionTile(
+          tilePadding: EdgeInsets.zero,
+          childrenPadding: EdgeInsets.zero,
+          backgroundColor: Colors.transparent,
+          collapsedBackgroundColor: Colors.transparent,
+          shape: const Border(),
+          collapsedShape: const Border(),
+          leading: null,
+          title: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Gradient header strip
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.md,
+                  vertical: AppSpacing.sm,
+                ),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(colors: colors),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.25),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(
+                        Icons.restaurant_rounded,
+                        color: Colors.white,
+                        size: 18,
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                    Expanded(
+                      child: Text(
+                        meal.title,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
+                        ),
+                      ),
+                    ),
+                    if (meal.minAgeMonths > 0)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.25),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          '+${meal.minAgeMonths}m',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              // Description
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.md,
+                  vertical: AppSpacing.sm,
+                ),
+                child: Text(
+                  meal.description,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
+            ],
           ),
-        ],
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.md,
+                0,
+                AppSpacing.md,
+                AppSpacing.md,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (meal.nutritionHighlights.isNotEmpty) ...[
+                    const _SectionLabel('Beneficios nutricionales'),
+                    const SizedBox(height: AppSpacing.xs),
+                    Wrap(
+                      spacing: AppSpacing.xs,
+                      runSpacing: AppSpacing.xs,
+                      children: meal.nutritionHighlights
+                          .map(
+                            (h) => Chip(
+                              label: Text(h),
+                              avatar: const Icon(
+                                Icons.favorite_rounded,
+                                size: 14,
+                                color: AppColors.primary,
+                              ),
+                              labelStyle: TextStyle(
+                                fontSize: 11,
+                                color: Theme.of(context).colorScheme.onSurface,
+                              ),
+                            ),
+                          )
+                          .toList(),
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                  ],
+                  const _SectionLabel('Preparación'),
+                  const SizedBox(height: AppSpacing.xs),
+                  Text(
+                    meal.instructions,
+                    style: TextStyle(
+                      fontSize: 13,
+                      height: 1.5,
+                      color: Theme.of(context).colorScheme.onSurface,
+                    ),
+                  ),
+                  if (meal.missingIngredients.isNotEmpty) ...[
+                    const SizedBox(height: AppSpacing.md),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(AppSpacing.sm),
+                      decoration: BoxDecoration(
+                        color: AppColors.secondary.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            '🛒 Te falta comprar:',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 12,
+                              color: AppColors.secondary,
+                            ),
+                          ),
+                          ...meal.missingIngredients.map(
+                            (m) => Text(
+                              '• $m',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                  if (meal.sourceDocument.isNotEmpty) ...[
+                    const SizedBox(height: AppSpacing.sm),
+                    Builder(
+                      builder: (context) {
+                        final muted =
+                            Theme.of(context).colorScheme.onSurfaceVariant;
+                        return Row(
+                          children: [
+                            Icon(
+                              Icons.menu_book_outlined,
+                              size: 12,
+                              color: muted,
+                            ),
+                            const SizedBox(width: 4),
+                            Expanded(
+                              child: Text(
+                                meal.sourceDocument,
+                                style: TextStyle(color: muted, fontSize: 11),
+                              ),
+                            ),
+                          ],
+                        );
+                      },
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SectionLabel extends StatelessWidget {
+  final String text;
+  const _SectionLabel(this.text);
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      text,
+      style: TextStyle(
+        fontWeight: FontWeight.w600,
+        fontSize: 13,
+        color: Theme.of(context).colorScheme.onSurface,
       ),
     );
   }

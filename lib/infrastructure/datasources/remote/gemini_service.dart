@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:developer' as dev;
 import 'package:dio/dio.dart';
 import 'package:flutter/services.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
@@ -23,31 +24,39 @@ class GeminiService {
   int _keyIndex = 0;
 
   GeminiService()
-      : _dio = Dio(),
+      : _dio = Dio(BaseOptions(receiveTimeout: const Duration(minutes: 5))),
         _keys = AppConfig.geminiApiKeys {
-    if (_keys.isEmpty) throw AiException('No Gemini API keys configured in .env');
+    if (_keys.isEmpty) throw AiException('No Gemini API keys en .env');
   }
 
   String get _key => _keys[_keyIndex];
 
-  void _rotate() => _keyIndex = (_keyIndex + 1) % _keys.length;
+  void _rotate() {
+    _keyIndex = (_keyIndex + 1) % _keys.length;
+    dev.log('[Gemini] Rotando a key $_keyIndex');
+  }
+
+  // ─── Upload ───────────────────────────────────────────────────────────────
 
   Future<List<String>> uploadAllPdfs() async {
     final uris = <String>[];
     for (final asset in _pdfAssets) {
       final displayName = asset.split('/').last;
+      dev.log('[Gemini] Subiendo $displayName...');
       final uri = await _uploadPdf(asset, displayName);
+      dev.log('[Gemini] Subido: $uri');
+      await _waitUntilActive(uri);
       uris.add(uri);
     }
     return uris;
   }
 
   Future<String> _uploadPdf(String assetPath, String displayName) async {
-    final data = await rootBundle.load(assetPath);
-    final bytes = data.buffer.asUint8List();
+    final byteData = await rootBundle.load(assetPath);
+    final bytes = byteData.buffer.asUint8List();
 
     // Step 1: initiate resumable upload
-    late String uploadEndpoint;
+    String uploadEndpoint = '';
     for (var attempt = 0; attempt < _keys.length; attempt++) {
       try {
         final initRes = await _dio.post(
@@ -57,44 +66,75 @@ class GeminiService {
             headers: {
               'X-Goog-Upload-Protocol': 'resumable',
               'X-Goog-Upload-Command': 'start',
-              'X-Goog-Upload-Header-Content-Length': bytes.length,
+              'X-Goog-Upload-Header-Content-Length': '${bytes.length}',
               'X-Goog-Upload-Header-Content-Type': _pdfMime,
               'Content-Type': 'application/json',
             },
-            responseType: ResponseType.plain,
+            responseType: ResponseType.bytes,
           ),
           data: jsonEncode({'file': {'display_name': displayName}}),
         );
         uploadEndpoint = initRes.headers.value('x-goog-upload-url') ?? '';
-        break;
+        if (uploadEndpoint.isNotEmpty) break;
       } on DioException catch (e) {
-        if (e.response?.statusCode == 429) {
+        final status = e.response?.statusCode;
+        if (status == 429) {
           _rotate();
           continue;
         }
-        throw FileUploadException('Init failed: ${e.message}');
+        throw FileUploadException('Init upload falló ($status): ${e.message}');
       }
     }
 
     if (uploadEndpoint.isEmpty) throw const QuotaExhaustedException();
 
-    // Step 2: upload bytes
+    // Step 2: upload raw bytes
     final uploadRes = await _dio.put(
       uploadEndpoint,
+      data: bytes,
       options: Options(
+        contentType: _pdfMime,
         headers: {
-          'Content-Length': bytes.length,
-          'X-Goog-Upload-Offset': 0,
+          'Content-Length': '${bytes.length}',
+          'X-Goog-Upload-Offset': '0',
           'X-Goog-Upload-Command': 'upload, finalize',
-          'Content-Type': _pdfMime,
         },
+        sendTimeout: const Duration(minutes: 5),
       ),
-      data: Stream.fromIterable([bytes]),
     );
 
-    final fileUri = uploadRes.data['file']['uri'] as String;
+    final fileData = uploadRes.data as Map<String, dynamic>;
+    final fileUri = fileData['file']?['uri'] as String?;
+    if (fileUri == null || fileUri.isEmpty) {
+      throw FileUploadException('URI vacío en respuesta: $fileData');
+    }
     return fileUri;
   }
+
+  // Poll until Gemini marks the file as ACTIVE (PDFs need processing time)
+  Future<void> _waitUntilActive(String fileUri) async {
+    final filePath = Uri.parse(fileUri).path; // e.g. /v1beta/files/abc123
+    final endpoint = '$_baseUrl$filePath';
+
+    for (var i = 0; i < 30; i++) {
+      await Future<void>.delayed(const Duration(seconds: 3));
+      try {
+        final res = await _dio.get(
+          endpoint,
+          queryParameters: {'key': _key},
+        );
+        final state = (res.data as Map<String, dynamic>)['state'] as String?;
+        dev.log('[Gemini] File state: $state ($fileUri)');
+        if (state == 'ACTIVE') return;
+        if (state == 'FAILED') throw FileUploadException('File processing FAILED: $fileUri');
+      } on DioException catch (e) {
+        dev.log('[Gemini] Poll error: ${e.message}');
+      }
+    }
+    throw FileUploadException('Timeout esperando que el archivo quede ACTIVE');
+  }
+
+  // ─── Generation ──────────────────────────────────────────────────────────
 
   Future<String> generateContent(
     String prompt,
@@ -112,17 +152,80 @@ class GeminiService {
           parts.add(FilePart(Uri.parse(uri)));
         }
 
+        dev.log('[Gemini] generateContent con ${fileUris.length} archivos, key $_keyIndex');
         final response = await model.generateContent([Content.multi(parts)]);
-        return response.text ?? '';
+        final text = response.text ?? '';
+        dev.log('[Gemini] Respuesta (${text.length} chars)');
+        return text;
       } on GenerativeAIException catch (e) {
-        final msg = e.message.toLowerCase();
-        if (msg.contains('429') || msg.contains('quota') || msg.contains('rate')) {
+        dev.log('[Gemini] Error: ${e.message}');
+        if (_isQuotaError(e.message.toLowerCase())) {
           _rotate();
           continue;
         }
         throw AiException(e.message);
+      } catch (e) {
+        dev.log('[Gemini] Error inesperado: $e');
+        throw AiException('Error inesperado: $e');
       }
     }
     throw const QuotaExhaustedException();
   }
+
+  // ─── Chat (free keys only, skip index 0) ─────────────────────────────────
+
+  Future<String> sendChatMessage({
+    required List<({String role, String content})> history,
+    required String userMessage,
+    required List<String> fileUris,
+    required String systemPrompt,
+    int freeKeyStartIndex = 1,
+  }) async {
+    // Hidden exchange: system context + PDFs so Gemini has full knowledge base
+    final systemContent = Content.multi([
+      TextPart(systemPrompt),
+      ...fileUris.map((uri) => FilePart(Uri.parse(uri))),
+    ]);
+    final ackContent = Content(
+      'model',
+      [TextPart('Entendido. Estoy listo para ayudarte con la alimentación de tu bebé.')],
+    );
+
+    final List<Content> contentHistory = [systemContent, ackContent];
+    for (final msg in history) {
+      contentHistory.add(Content(msg.role, [TextPart(msg.content)]));
+    }
+
+    final startIdx = _keys.length > 1 ? freeKeyStartIndex % _keys.length : 0;
+
+    for (var attempt = 0; attempt < _keys.length; attempt++) {
+      final keyIdx = (startIdx + attempt) % _keys.length;
+      try {
+        final model = GenerativeModel(model: AppConfig.geminiModel, apiKey: _keys[keyIdx]);
+        final chat = model.startChat(history: contentHistory);
+        dev.log('[Gemini] Chat key $keyIdx, ${history.length} mensajes previos');
+        final response = await chat.sendMessage(Content.text(userMessage));
+        _keyIndex = keyIdx;
+        return response.text ?? '';
+      } on GenerativeAIException catch (e) {
+        dev.log('[Gemini] Chat key $keyIdx error: ${e.message}');
+        if (_isQuotaError(e.message.toLowerCase())) continue;
+        throw AiException(e.message);
+      } catch (e) {
+        throw AiException('Error inesperado: $e');
+      }
+    }
+    throw const QuotaExhaustedException();
+  }
+
+  bool _isQuotaError(String msg) =>
+      msg.contains('429') ||
+      msg.contains('quota') ||
+      msg.contains('rate') ||
+      msg.contains('limit') ||
+      msg.contains('depleted') ||
+      msg.contains('credits') ||
+      msg.contains('billing') ||
+      msg.contains('retry') ||
+      msg.contains('prepay');
 }

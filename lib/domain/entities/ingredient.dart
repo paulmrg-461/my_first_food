@@ -6,7 +6,7 @@ part 'ingredient.g.dart';
 @freezed
 abstract class Ingredient with _$Ingredient {
   const factory Ingredient({
-    required String id,
+    @Default('') String id,
     required String name,
     @Default(0.0) double quantity,
     @Default('unidad') String unit,

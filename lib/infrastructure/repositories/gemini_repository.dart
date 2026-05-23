@@ -1,8 +1,10 @@
 import 'dart:convert';
+import 'dart:developer' as dev;
 import 'package:dartz/dartz.dart';
 import '../../core/config/app_config.dart';
 import '../../core/error/exceptions.dart';
 import '../../core/error/failures.dart';
+import '../../domain/entities/chat_message.dart';
 import '../../domain/entities/health_insight.dart';
 import '../../domain/entities/ingredient.dart';
 import '../../domain/entities/meal_suggestion.dart';
@@ -52,14 +54,21 @@ class GeminiRepository implements IAiRepository {
       final raw = await _gemini.generateContent(prompt, fileUris);
       final json = _extractJson(raw);
       final list = (json['suggestions'] as List<dynamic>)
-          .map((e) => MealSuggestion.fromJson(e as Map<String, dynamic>))
+          .map((e) => MealSuggestion.fromJson(_sanitizeMeal(e as Map<String, dynamic>)))
           .toList();
       await _local.cacheSuggestions(list);
       return Right(list);
     } on QuotaExhaustedException {
       return const Left(QuotaExhaustedFailure());
-    } catch (e) {
-      return Left(AiFailure('suggestMeals failed: $e'));
+    } on AiException catch (e) {
+      dev.log('[Repo] suggestMeals AiException: ${e.message}');
+      return Left(AiFailure(e.message));
+    } on FormatException catch (e) {
+      dev.log('[Repo] JSON parse error: $e');
+      return Left(AiFailure('La IA devolvió un formato inválido. Intenta de nuevo.'));
+    } catch (e, st) {
+      dev.log('[Repo] suggestMeals error: $e\n$st');
+      return Left(AiFailure('Error: $e'));
     }
   }
 
@@ -117,6 +126,67 @@ class GeminiRepository implements IAiRepository {
     } catch (e) {
       return Left(AiFailure('getHealthInsight failed: $e'));
     }
+  }
+
+  @override
+  Future<Either<Failure, String>> sendChatMessage({
+    required List<ChatMessage> history,
+    required String userMessage,
+    required int babyAgeMonths,
+    required List<String> availableIngredients,
+  }) async {
+    try {
+      final uploadResult = await ensureFilesUploaded();
+      if (uploadResult.isLeft()) {
+        return Left(uploadResult.fold(id, (_) => const AiFailure('')));
+      }
+
+      final fileUris = await _local.getFileUris() ?? [];
+      final systemPrompt = _chatSystemPrompt(babyAgeMonths, availableIngredients);
+      final historyRaw = history
+          .map((m) => (role: m.role, content: m.content))
+          .toList();
+
+      final response = await _gemini.sendChatMessage(
+        history: historyRaw,
+        userMessage: userMessage,
+        fileUris: fileUris,
+        systemPrompt: systemPrompt,
+        freeKeyStartIndex: 1,
+      );
+      return Right(response);
+    } on QuotaExhaustedException {
+      return const Left(QuotaExhaustedFailure());
+    } on AiException catch (e) {
+      dev.log('[Repo] sendChatMessage AiException: ${e.message}');
+      return Left(AiFailure(e.message));
+    } catch (e, st) {
+      dev.log('[Repo] sendChatMessage error: $e\n$st');
+      return Left(AiFailure('Error: $e'));
+    }
+  }
+
+  Map<String, dynamic> _sanitizeMeal(Map<String, dynamic> m) {
+    final ingredients = (m['ingredients'] as List<dynamic>? ?? []).map((e) {
+      final ing = Map<String, dynamic>.from(e as Map);
+      ing['id'] ??= ing['name']?.toString() ?? '';
+      ing['name'] ??= '';
+      ing['quantity'] = (ing['quantity'] as num?)?.toDouble() ?? 0.0;
+      ing['unit'] ??= 'unidad';
+      ing['isAvailable'] ??= true;
+      return ing;
+    }).toList();
+
+    return {
+      'title': m['title'] ?? 'Sin título',
+      'description': m['description'] ?? '',
+      'instructions': m['instructions'] ?? '',
+      'minAgeMonths': (m['minAgeMonths'] as num?)?.toInt() ?? 6,
+      'ingredients': ingredients,
+      'sourceDocument': m['sourceDocument'] ?? '',
+      'nutritionHighlights': List<String>.from(m['nutritionHighlights'] ?? []),
+      'missingIngredients': List<String>.from(m['missingIngredients'] ?? []),
+    };
   }
 
   Map<String, dynamic> _extractJson(String raw) {
@@ -187,4 +257,13 @@ Responde ÚNICAMENTE con este JSON:
   "recommendedAgeMonths": $age,
   "preparationTip": "cómo prepararlo para $age meses"
 }''';
+
+  String _chatSystemPrompt(int age, List<String> ingredients) =>
+      'Eres nutricionista pediátrico experto y asistente conversacional de cocina para bebés. '
+      'Bebé de $age meses. '
+      'Ingredientes disponibles: ${ingredients.isEmpty ? "básicos del hogar" : ingredients.join(", ")}. '
+      'Basándote en los libros de recetas adjuntos, ayuda de forma conversacional a planear comidas. '
+      '${age < 12 ? "PROHIBIDO sugerir: miel, sal añadida, azúcar, leche de vaca como bebida principal. " : ""}'
+      '${age < 8 ? "Solo purés suaves." : age < 10 ? "Purés y aplastados." : "Trozos blandos permitidos."} '
+      'Responde en español, de forma amigable y concisa. No repitas JSON ni formato estructurado, solo texto natural.';
 }

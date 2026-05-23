@@ -213,10 +213,10 @@ return $default(_that.id,_that.name,_that.quantity,_that.unit,_that.isAvailable)
 @JsonSerializable()
 
 class _Ingredient implements Ingredient {
-  const _Ingredient({required this.id, required this.name, this.quantity = 0.0, this.unit = 'unidad', this.isAvailable = true});
+  const _Ingredient({this.id = '', required this.name, this.quantity = 0.0, this.unit = 'unidad', this.isAvailable = true});
   factory _Ingredient.fromJson(Map<String, dynamic> json) => _$IngredientFromJson(json);
 
-@override final  String id;
+@override@JsonKey() final  String id;
 @override final  String name;
 @override@JsonKey() final  double quantity;
 @override@JsonKey() final  String unit;

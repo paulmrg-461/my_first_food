@@ -8,15 +8,16 @@ environment:
   sdk: ^3.12.0-327.4.beta
 
 dependencies:
+  cloud_firestore: ^6.4.1
   cupertino_icons: ^1.0.8
   dartz: ^0.10.1
   dio: ^5.8.0+1
   equatable: ^2.0.7
+  firebase_auth: ^6.5.1
   firebase_core: ^4.9.0
   flutter:
     sdk: flutter
   flutter_bloc: ^9.1.1
-  flutter_dotenv: ^5.2.1
   flutter_secure_storage: ^9.2.4
   freezed_annotation: ^3.1.0
   get_it: ^8.0.3
@@ -27,9 +28,8 @@ dependencies:
   path_provider: ^2.1.5
 
 dev_dependencies:
-
-  # Code generation
   build_runner: ^2.4.14
+  flutter_launcher_icons: ^0.14.4
   flutter_lints: ^6.0.0
   flutter_test:
     sdk: flutter
@@ -40,5 +40,16 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   assets:
-    - .env
     - assets/docs/
+    - assets/images/
+  
+flutter_launcher_icons:
+  android: "launcher_icon"
+  ios: true
+  image_path: "assets/images/logo_no_bg.png"
+  min_sdk_android: 21 # android min sdk min:16, default 21
+  web:
+    generate: true
+    image_path: "assets/images/logo_no_bg.png"
+    background_color: "#hexcode"
+    theme_color: "#hexcode"
